@@ -21,11 +21,6 @@ class Mode(Enum):
     TEST = 1
 
 
-backflip_file = pkg_resources.resource_filename(
-                    "py_deepmimic", 
-                    "data/args/train_humanoid3d_backflip_args.txt"
-                )
-
 def convert_observation_to_space(observation):
     if isinstance(observation, np.ndarray):
         low = np.full(observation.shape, -float('inf'))
