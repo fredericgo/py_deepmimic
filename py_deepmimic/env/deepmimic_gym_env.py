@@ -21,11 +21,6 @@ class Mode(Enum):
     TEST = 1
 
 
-backflip_file = pkg_resources.resource_filename(
-                    "py_deepmimic", 
-                    "data/args/train_humanoid3d_backflip_args.txt"
-                )
-
 def convert_observation_to_space(observation):
     if isinstance(observation, np.ndarray):
         low = np.full(observation.shape, -float('inf'))
@@ -38,24 +33,30 @@ def convert_observation_to_space(observation):
 
 
 class DeepMimicGymEnv(Env):
-    def __init__(self, arg_file, enable_draw=True):
+    metadata = {'render.modes': []}
+    reward_range = (-float('inf'), float('inf'))
+    spec = None
+
+    def __init__(self, 
+                 arg_file, 
+                 enable_draw=True, 
+                 **kwargs):
         super().__init__(arg_file, enable_draw)
         
         self._num_agents = 1
+        self.id = 0
+        self.update_timestep = 1. / 240
+
+        self.random_restart = False
         self._isInitialized = False
         self._useStablePD = True
         self.arg_file = arg_file
         self._config = argparser.load_file(arg_file)
 
         self.initialize()
-        self.id = 0
-        self.update_timestep = 1. / 240
-        
-        self._set_action_space()
-        action = self.action_space.sample()
-        observation, _reward, done, _info = self.step(action)
-        assert not done
-        self._set_observation_space(observation)
+
+    def render(self, mode, **kwargs):
+        pass
 
     def _set_action_space(self):
         low = self.build_action_bound_min(0)
@@ -83,6 +84,7 @@ class DeepMimicGymEnv(Env):
             else:
                 self._pybullet_client = bullet_client.BulletClient()
 
+
             self._pybullet_client.setAdditionalSearchPath(pybullet_data.getDataPath())
             z2y = self._pybullet_client.getQuaternionFromEuler([-math.pi * 0.5, 0, 0])
             self._planeId = self._pybullet_client.loadURDF("plane_implicit.urdf", [0, 0, 0],
@@ -90,22 +92,25 @@ class DeepMimicGymEnv(Env):
                                                             useMaximalCoordinates=True)
             #print("planeId=",self._planeId)
             self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_Y_AXIS_UP, 1)
+            self._pybullet_client.resetDebugVisualizerCamera(
+                                            cameraDistance=3, 
+                                            cameraYaw=180, 
+                                            cameraPitch=-35, 
+                                            cameraTargetPosition=[0, 0, 0]
+                                        )
             self._pybullet_client.setGravity(0, -9.8, 0)
 
             self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=10)
             self._pybullet_client.changeDynamics(self._planeId, linkIndex=-1, lateralFriction=0.9)
 
             self._mocapData = motion_capture_data.MotionCaptureData()
-
             motion_file = self._config["motion_file"]
+            motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
+            self._mocapData.Load(motionPath)
             print("motion_file=", motion_file[0])
 
-            motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
-            #motionPath = pybullet_data.getDataPath()+"/motions/humanoid3d_backflip.txt"
-            self._mocapData.Load(motionPath)
             timeStep = 1. / 240.
             useFixedBase = False
-
             self._humanoid = humanoid_stable_pd.HumanoidStablePD(
                                 self._pybullet_client, 
                                 self._mocapData,
@@ -116,31 +121,26 @@ class DeepMimicGymEnv(Env):
 
             self._pybullet_client.setTimeStep(timeStep)
             self._pybullet_client.setPhysicsEngineParameter(numSubSteps=1)
+            
+            self.reset()
+            self._set_action_space()
+            action = self.action_space.sample()
+            observation, _reward, done, _info = self.step(action)
+            assert not done
+            self._set_observation_space(observation)
 
-            selfCheck = False
-            if (selfCheck):
-                curTime = 0
-                while self._pybullet_client.isConnected():
-                    self._humanoid.setSimTime(curTime)
-                    state = self._humanoid.getState()
-                    #print("state=",state)
-                    pose = self._humanoid.computePose(self._humanoid._frameFraction)
-                    for i in range(10):
-                        curTime += timeStep
-                    #taus = self._humanoid.computePDForces(pose)
-                    #self._humanoid.applyPDForces(taus)
-                    #self._pybullet_client.stepSimulation()
-                    time.sleep(timeStep)
-        self.reset()
 
     def reset(self):
         #print("numframes = ", self._humanoid._mocap_data.NumFrames())
         #startTime = random.randint(0,self._humanoid._mocap_data.NumFrames()-2)
-        rnrange = 1000
-        rn = random.randint(0, rnrange)
-        startTime = float(rn) / rnrange * self._humanoid.getCycleTime()
-        self.t = startTime
+        if self.random_restart:
+            rnrange = 1000
+            rn = random.randint(0, rnrange)
+            startTime = float(rn) / rnrange * self._humanoid.getCycleTime()
+        else:
+            startTime = 0
 
+        self.t = startTime
         self._humanoid.setSimTime(startTime)
 
         self._humanoid.resetPose()
@@ -390,3 +390,13 @@ class DeepMimicGymEnv(Env):
         if o in keys:
             return keys[ord(key)] & self._pybullet_client.KEY_WAS_TRIGGERED
         return False
+
+
+class HumanoidWalkEnv(DeepMimicGymEnv):    
+    backflip_file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_walk_args.txt"
+    )
+    
+    def __init__(self, **kwargs):
+        super(HumanoidWalkEnv, self).__init__(self.backflip_file, **kwargs)
