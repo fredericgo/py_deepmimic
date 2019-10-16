@@ -5,5 +5,5 @@ def make(env_id, **kwargs):
     domain, task = env_id.split("-")
     env_string = "{}{}Env".format(domain.capitalize(), task.capitalize())
     env_cls = getattr(deepmimic_gym_env, env_string)
-    print(kwargs)
-    return env_cls(**kwargs)
+    enable_draw = kwargs.pop('enable_draw', False)
+    return env_cls(enable_draw=enable_draw, **kwargs)

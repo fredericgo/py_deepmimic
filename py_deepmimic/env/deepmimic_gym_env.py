@@ -39,10 +39,10 @@ class DeepMimicGymEnv(Env):
 
     def __init__(self, 
                  arg_file, 
-                 enable_draw=True, 
+                 enable_draw=False, 
                  **kwargs):
         super().__init__(arg_file, enable_draw)
-        
+
         self._num_agents = 1
         self.id = 0
         self.update_timestep = 1. / 240
@@ -69,11 +69,11 @@ class DeepMimicGymEnv(Env):
         return self.observation_space
 
     def __setstate__(self, state):
-        self.__init__(state)
+        enable_draw = state.pop('enable_draw', False)
+        self.__init__(enable_draw=enable_draw, **state)
 
     def __getstate__(self):
-        return {'arg_file': self.arg_file,
-                'enable_draw': self.enable_draw}
+        return {'enable_draw': self.enable_draw}
 
     def initialize(self):
         if not self._isInitialized:
@@ -393,10 +393,23 @@ class DeepMimicGymEnv(Env):
 
 
 class HumanoidWalkEnv(DeepMimicGymEnv):    
-    backflip_file = pkg_resources.resource_filename(
+    _file = pkg_resources.resource_filename(
         "py_deepmimic",
         "data/args/train_humanoid3d_walk_args.txt"
     )
     
-    def __init__(self, **kwargs):
-        super(HumanoidWalkEnv, self).__init__(self.backflip_file, **kwargs)
+    def __init__(self, 
+                 enable_draw=False, 
+                 **kwargs):
+        super(HumanoidWalkEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
+
+class HumanoidCartwheelEnv(DeepMimicGymEnv):
+    _file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_cartwheel_args.txt"
+    )
+
+    def __init__(self, 
+                 enable_draw=False, 
+                 **kwargs):
+        super(HumanoidCartwheelEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
