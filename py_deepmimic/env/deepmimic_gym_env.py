@@ -458,7 +458,7 @@ class HumanoidRadiusEnv(DeepMimicGymEnv):
         self.needs_update_time = self.t - 1  # force update
         return self.observations()
 
-    def calc_reward(self):
+    def calc_reward(self, _id):
         radius = 5
         x = self._humanoid.getPosition()
         r = np.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2])
