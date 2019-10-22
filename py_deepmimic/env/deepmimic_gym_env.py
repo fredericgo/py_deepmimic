@@ -43,6 +43,7 @@ class DeepMimicGymEnv(Env):
                  **kwargs):
         super().__init__(arg_file, enable_draw)
 
+        self.render_mode = kwargs.pop('render_mode', '')
         self._num_agents = 1
         self.id = 0
         self.update_timestep = 1. / 240
@@ -56,7 +57,9 @@ class DeepMimicGymEnv(Env):
         self.initialize()
 
     def render(self, mode, **kwargs):
-        pass
+        if self.render_mode == 'rgb_array':
+            return self._pybullet_client.getCameraImage(640, 480)[2]
+        return None
 
     def _set_action_space(self):
         low = self.build_action_bound_min(0)
@@ -78,7 +81,10 @@ class DeepMimicGymEnv(Env):
     def initialize(self):
         if not self._isInitialized:
             if self.enable_draw:
-                self._pybullet_client = bullet_client.BulletClient(connection_mode=p1.GUI)
+                if self.render_mode == 'human':
+                    self._pybullet_client = bullet_client.BulletClient(connection_mode=p1.GUI)
+                if self.render_mode == 'rgb_array':
+                    self._pybullet_client = bullet_client.BulletClient()
                 #disable 'GUI' since it slows down a lot on Mac OSX and some other platforms
                 self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_GUI, 0)
             else:
@@ -392,6 +398,19 @@ class DeepMimicGymEnv(Env):
         return False
 
 
+class HumanoidBackflipEnv(DeepMimicGymEnv):
+    _file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_backflip_args.txt"
+    )
+
+    def __init__(self,
+                 enable_draw=False,
+                 **kwargs):
+        super(HumanoidBackflipEnv, self).__init__(
+            self._file, enable_draw=enable_draw, **kwargs)
+
+
 class HumanoidWalkEnv(DeepMimicGymEnv):    
     _file = pkg_resources.resource_filename(
         "py_deepmimic",
@@ -413,3 +432,37 @@ class HumanoidCartwheelEnv(DeepMimicGymEnv):
                  enable_draw=False, 
                  **kwargs):
         super(HumanoidCartwheelEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
+
+
+class HumanoidRadiusEnv(DeepMimicGymEnv):
+    _file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_walk_args.txt"
+    )
+
+    def __init__(self,
+                 enable_draw=False,
+                 **kwargs):
+        super(HumanoidRadiusEnv, self).__init__(
+            self._file, enable_draw=enable_draw, **kwargs)
+
+    def reset(self):
+        startTime = 0
+
+        self.t = startTime
+        self._humanoid.setSimTime(startTime)
+        self._humanoid.resetPoseWithoutVelocity()
+        #this clears the contact points. Todo: add API to explicitly clear all contact points?
+        #self._pybullet_client.stepSimulation()
+        self._humanoid.resetPoseWithoutVelocity()
+        self.needs_update_time = self.t - 1  # force update
+        return self.observations()
+
+    def calc_reward(self):
+        radius = 5
+        x = self._humanoid.getPosition()
+        r = np.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2])
+        reward = r / radius
+        if r > 5:
+            reward = 0
+        return reward

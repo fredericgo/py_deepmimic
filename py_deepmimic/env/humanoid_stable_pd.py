@@ -157,8 +157,12 @@ class HumanoidStablePD(object):
     self.initializePose(self._poseInterpolator, self._sim_model, initBase=True)
     self.initializePose(self._poseInterpolator, self._kin_model, initBase=False)
 
+  def resetPoseWithoutVelocity(self):
+    pose = self.computePose(self._frameFraction)
+    self.initializePose(self._poseInterpolator, self._sim_model, initBase=True, initializeVelocity=False)
+    self.initializePose(self._poseInterpolator, self._kin_model, initBase=False)
+      
   def initializePose(self, pose, phys_model, initBase, initializeVelocity=True):
-    
     useArray = True
     if initializeVelocity:
       if initBase:
@@ -734,6 +738,10 @@ class HumanoidStablePD(object):
     axis, angle = self._pybullet_client.getAxisAngleFromQuaternion(q_diff)
     return angle * angle
 
+  def getPosition(self):
+    rootPosSim, _ = self._pybullet_client.getBasePositionAndOrientation(self._sim_model)
+    return rootPosSim
+    
   def getReward(self, pose):
     #from DeepMimic double cSceneImitate::CalcRewardImitate
     #todo: compensate for ground height in some parts, once we move to non-flat terrain
