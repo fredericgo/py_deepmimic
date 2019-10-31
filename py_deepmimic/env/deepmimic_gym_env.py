@@ -181,7 +181,7 @@ class DeepMimicGymEnv(Env):
 
         self._humanoid.resetPose()
         #this clears the contact points. Todo: add API to explicitly clear all contact points?
-        #self._pybullet_client.stepSimulation()
+        self._pybullet_client.stepSimulation()
         self._humanoid.resetPose()
         self.needs_update_time = self.t - 1  # force update
         return self.observations()
@@ -408,6 +408,7 @@ class DeepMimicGymEnv(Env):
     def is_episode_end(self):
         isEnded = self._humanoid.terminates()
         #also check maximum time, 20 seconds (todo get from file)
+        #print(isEnded)
         #print("self.t=",self.t)
         if (self.t > 20):
             isEnded = True
