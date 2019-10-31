@@ -1,0 +1,31 @@
+<?xml version="0.0" ?>
+<robot name="ground.urdf">
+  <link name="grass">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+       <mass value="0"/>
+       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+    <geometry>
+      <mesh filename="grass.obj"/>
+    </geometry>
+  </visual>
+  </link>
+  <link name="runway">
+    <inertial>
+       <origin rpy="0 0 0" xyz="0 0 0"/>
+       <mass value="0"/>
+       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
+    </inertial>
+    <visual>
+    <geometry>
+      <mesh filename="runway.obj"/>
+    </geometry>
+  </visual>
+  </link>
+  <joint name="ground_to_runway" type="fixed">
+      <parent link="grass"/>
+      <child link="runway"/>
+  </joint>
+</robot>

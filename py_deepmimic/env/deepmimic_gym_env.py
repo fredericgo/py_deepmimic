@@ -1,10 +1,13 @@
 from py_deepmimic.env.env import Env
 from py_deepmimic.env.action_space import ActionSpace
-from gym.spaces import Box
 
 from py_deepmimic.env import motion_capture_data
 from py_deepmimic.env import humanoid_stable_pd
 from py_deepmimic.env import argparser
+from py_deepmimic.env.util import convert_observation_to_space
+
+from gym.spaces import Box
+
 from pybullet_utils import bullet_client
 import pybullet_data
 import pybullet as p1
@@ -21,17 +24,6 @@ class Mode(Enum):
     TEST = 1
 
 
-def convert_observation_to_space(observation):
-    if isinstance(observation, np.ndarray):
-        low = np.full(observation.shape, -float('inf'))
-        high = np.full(observation.shape, float('inf'))
-        space = Box(low, high, dtype=observation.dtype)
-    else:
-        raise NotImplementedError(type(observation), observation)
-
-    return space
-
-
 class DeepMimicGymEnv(Env):
     metadata = {'render.modes': []}
     reward_range = (-float('inf'), float('inf'))
@@ -43,12 +35,12 @@ class DeepMimicGymEnv(Env):
                  **kwargs):
         super().__init__(arg_file, enable_draw)
 
-        self.render_mode = kwargs.pop('render_mode', '')
+        self.render_mode = kwargs.pop('render_mode', 'rgb_array')
         self._num_agents = 1
         self.id = 0
         self.update_timestep = 1. / 240
 
-        self.random_restart = False
+        self.random_restart = True
         self._isInitialized = False
         self._useStablePD = True
         self.arg_file = arg_file
@@ -58,8 +50,16 @@ class DeepMimicGymEnv(Env):
 
     def render(self, mode, **kwargs):
         if self.render_mode == 'rgb_array':
-            return self._pybullet_client.getCameraImage(640, 480)[2]
-        return None
+            image = self._pybullet_client.getCameraImage(
+                self.width,
+                self.height,
+                self.viewMatrix,
+                self.projectionMatrix,
+                shadow=1,
+                lightDirection=[1, 1, 1],
+                renderer=p1.ER_BULLET_HARDWARE_OPENGL,
+            )[2]
+            return image
 
     def _set_action_space(self):
         low = self.build_action_bound_min(0)
@@ -78,13 +78,43 @@ class DeepMimicGymEnv(Env):
     def __getstate__(self):
         return {'enable_draw': self.enable_draw}
 
+    def _build_camera(self):
+        self.camTargetPos = [0, 1, 0]
+
+        self.pitch = -20
+        self.yaw = 190
+        self.roll = 0
+        self.upAxisIndex = 1
+        self.camDistance = 4
+
+        self.width = 800
+        self.height = 600
+
+        self.nearPlane = 0.01
+        self.farPlane = 100
+
+        self.fov = 60
+        self.viewMatrix = p1.computeViewMatrixFromYawPitchRoll(
+                        self.camTargetPos,
+                        self.camDistance,
+                        self.yaw,
+                        self.pitch,
+                        self.roll,
+                        self.upAxisIndex)
+        self.aspect = self.width / self.height
+        self.projectionMatrix = p1.computeProjectionMatrixFOV(
+            self.fov,
+            self.aspect,
+            self.nearPlane,
+            self.farPlane)
+
     def initialize(self):
         if not self._isInitialized:
             if self.enable_draw:
-                if self.render_mode == 'human':
+                if self.render_mode == 'human' or self.render_mode == 'rgb_array':
                     self._pybullet_client = bullet_client.BulletClient(connection_mode=p1.GUI)
-                if self.render_mode == 'rgb_array':
-                    self._pybullet_client = bullet_client.BulletClient()
+                    self._build_camera()
+                    
                 #disable 'GUI' since it slows down a lot on Mac OSX and some other platforms
                 self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_GUI, 0)
             else:
@@ -447,7 +477,6 @@ class HumanoidRadiusEnv(DeepMimicGymEnv):
             self._file, enable_draw=enable_draw, **kwargs)
 
     def reset(self):
-        startTime = 0
 
         self.t = startTime
         self._humanoid.setSimTime(startTime)

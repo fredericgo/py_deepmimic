@@ -1,5 +1,32 @@
 import re as RE
 
+KEY_TYPE = {
+    'scene': str,
+    'time_lim_min': float,
+    'time_lim_max': float,
+    'time_lim_exp': float,
+    'time_end_lim_min': float,
+    'time_end_lim_max': float,
+    'time_end_lim_exp': float,
+    'anneal_samples': int,
+    'num_update_substeps': int,
+    'num_sim_substeps': int,
+    'world_scale': float,
+    'terrain_file': str,
+    'char_types': str,
+    'character_files': str,
+    'enable_char_soft_contact': bool,
+    'enable_root_rot_fail': bool,
+    'fall_contact_bodies': int,
+    'char_ctrls': str,
+    'char_ctrl_files': str,
+    'motion_file': str,
+    'sync_char_root_pos': bool,
+    'sync_char_root_rot': bool,
+    'agent_files': str,
+    'output_path': str
+}
+
 def _is_comment(str):
     is_comment = False
     if (len(str) > 0):
@@ -23,7 +50,7 @@ def load_args(arg_strs):
         if (is_key):
             if (curr_key != ''):
                 if (curr_key not in _table):
-                    _table[curr_key] = vals
+                    _table[curr_key] = [KEY_TYPE[curr_key](v) for v in vals]
 
             vals = []
             curr_key = str[2::]

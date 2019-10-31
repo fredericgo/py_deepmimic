@@ -140,7 +140,6 @@ class HumanoidStablePD(object):
     fall_contact_bodies = []
     if self._config is not None:
       fall_contact_bodies = self._config["fall_contact_bodies"]
-      fall_contact_bodies = [int(x) for x in fall_contact_bodies]
     self._fall_contact_body_parts = fall_contact_bodies
 
     #[x,y,z] base position and [x,y,z,w] base orientation!
@@ -592,7 +591,6 @@ class HumanoidStablePD(object):
 
   def buildOriginTrans(self):
     rootPos, rootOrn = self._pybullet_client.getBasePositionAndOrientation(self._sim_model)
-
     #print("rootPos=",rootPos, " rootOrn=",rootOrn)
     invRootPos = [-rootPos[0], 0, -rootPos[2]]
     #invOrigTransPos, invOrigTransOrn = self._pybullet_client.invertTransform(rootPos,rootOrn)
@@ -613,8 +611,78 @@ class HumanoidStablePD(object):
     #print("invOrigTransMat =",invOrigTransMat )
     return invOrigTransPos, invOrigTransOrn
 
-  def getState(self):
+  def getExternal(self):
+    stateVector = []
 
+    rootTransPos, rootTransOrn = self.buildOriginTrans()
+    basePos, baseOrn = self._pybullet_client.getBasePositionAndOrientation(
+        self._sim_model)
+
+    rootPosRel, dummy = self._pybullet_client.multiplyTransforms(rootTransPos, rootTransOrn,
+                                                                 basePos, [0, 0, 0, 1])
+    #print("!!!rootPosRel =",rootPosRel )
+    #print("rootTransPos=",rootTransPos)
+    #print("basePos=",basePos)
+    localPos, localOrn = self._pybullet_client.multiplyTransforms(rootTransPos, rootTransOrn,
+                                                                  basePos, baseOrn)
+        
+  def getProprioceptive(self):
+    stateVector = []
+    
+    rootTransPos, rootTransOrn = self.buildOriginTrans()
+    basePos, baseOrn = self._pybullet_client.getBasePositionAndOrientation(self._sim_model)
+
+    rootPosRel, dummy = self._pybullet_client.multiplyTransforms(rootTransPos, rootTransOrn,
+                                                                 basePos, [0, 0, 0, 1])
+    print("!!!rootPosRel =",rootPosRel )
+    print("rootTransPos=",rootTransPos)
+    print("basePos=",basePos)
+    localPos, localOrn = self._pybullet_client.multiplyTransforms(rootTransPos, rootTransOrn,
+                                                                  basePos, baseOrn)
+
+    localPos = [
+        localPos[0] - rootPosRel[0], localPos[1] - rootPosRel[1], localPos[2] - rootPosRel[2]
+    ]
+
+    self.pb2dmJoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+    linkIndicesSim = []
+    for pbJoint in range(self._pybullet_client.getNumJoints(self._sim_model)):
+      linkIndicesSim.append(self.pb2dmJoints[pbJoint])
+      
+    linkStatesSim = self._pybullet_client.getLinkStates(self._sim_model, linkIndicesSim, computeForwardKinematics=True, computeLinkVelocity=True)
+    
+    for pbJoint in range(self._pybullet_client.getNumJoints(self._sim_model)):
+      j = self.pb2dmJoints[pbJoint]
+      ls = linkStatesSim[pbJoint]
+      linkPos = ls[0]
+      linkOrn = ls[1]
+      linkPosLocal, linkOrnLocal = self._pybullet_client.multiplyTransforms(
+          rootTransPos, rootTransOrn, linkPos, linkOrn)
+      if (linkOrnLocal[3] < 0):
+        linkOrnLocal = [-linkOrnLocal[0], -linkOrnLocal[1], -linkOrnLocal[2], -linkOrnLocal[3]]
+      linkPosLocal = [
+          linkPosLocal[0] - rootPosRel[0], linkPosLocal[1] - rootPosRel[1],
+          linkPosLocal[2] - rootPosRel[2]
+      ]
+      for l in linkPosLocal:
+        stateVector.append(l)
+      #re-order the quaternion, DeepMimic uses w,x,y,z
+
+      if (linkOrnLocal[3] < 0):
+        linkOrnLocal[0] *= -1
+        linkOrnLocal[1] *= -1
+        linkOrnLocal[2] *= -1
+        linkOrnLocal[3] *= -1
+
+      stateVector.append(linkOrnLocal[3])
+      stateVector.append(linkOrnLocal[0])
+      stateVector.append(linkOrnLocal[1])
+      stateVector.append(linkOrnLocal[2])
+    return stateVector
+
+
+  def getState(self):
     stateVector = []
     phase = self.getPhase()
     #print("phase=",phase)
