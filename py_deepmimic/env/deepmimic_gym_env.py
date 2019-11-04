@@ -36,11 +36,12 @@ class DeepMimicGymEnv(Env):
         super().__init__(arg_file, enable_draw)
 
         self.render_mode = kwargs.pop('render_mode', 'rgb_array')
+        self.evaluate = kwargs.pop('evaluate', False)
+
         self._num_agents = 1
         self.id = 0
         self.update_timestep = 1. / 240
 
-        self.random_restart = True
         self._isInitialized = False
         self._useStablePD = True
         self.arg_file = arg_file
@@ -169,12 +170,12 @@ class DeepMimicGymEnv(Env):
     def reset(self):
         #print("numframes = ", self._humanoid._mocap_data.NumFrames())
         #startTime = random.randint(0,self._humanoid._mocap_data.NumFrames()-2)
-        if self.random_restart:
+        if self.evaluate:
+            startTime = 0
+        else:
             rnrange = 1000
             rn = random.randint(0, rnrange)
             startTime = float(rn) / rnrange * self._humanoid.getCycleTime()
-        else:
-            startTime = 0
 
         self.t = startTime
         self._humanoid.setSimTime(startTime)
