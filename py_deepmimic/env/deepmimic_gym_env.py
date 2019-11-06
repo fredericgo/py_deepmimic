@@ -190,7 +190,7 @@ class DeepMimicGymEnv(Env):
     def step(self, action):
         self.set_action(self.id, action)
         self.update(self.update_timestep)
-
+        
         while not self.need_new_action(self.id):
             if self.is_episode_end():
                 break
