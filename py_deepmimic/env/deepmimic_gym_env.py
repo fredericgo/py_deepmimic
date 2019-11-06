@@ -3,9 +3,10 @@ from py_deepmimic.env.action_space import ActionSpace
 
 from py_deepmimic.env import motion_capture_data
 from py_deepmimic.env import humanoid_stable_pd
-from py_deepmimic.env import argparser
-from py_deepmimic.env.util import convert_observation_to_space
+from py_deepmimic.util import argparser
+from py_deepmimic.util import timer
 
+from py_deepmimic.env.util import convert_observation_to_space
 from gym.spaces import Box
 
 from pybullet_utils import bullet_client
@@ -45,9 +46,24 @@ class DeepMimicGymEnv(Env):
         self._isInitialized = False
         self._useStablePD = True
         self.arg_file = arg_file
-        self._config = argparser.load_file(arg_file)
+        self.arg_parser = argparser.ArgParser()
+        self.arg_parser.load_file(arg_file)
 
         self.initialize()
+
+    def set_timer_params(self):
+        anneal_samples = self.arg_parser.parse_float("anneal_samples", 32000000)
+        time_lim_min = self.arg_parser.parse_float("time_lim_min", np.inf)
+        time_lim_max = self.arg_parser.parse_float("time_lim_max", np.inf)
+        time_end_min = self.arg_parser.parse_float("time_end_lim_min", np.inf)
+        time_end_max = self.arg_parser.parse_float("time_end_lim_max", np.inf)
+        self.timer = timer.Timer(
+                        anneal_samples,
+                        time_lim_min,
+                        time_lim_max,
+                        time_end_min,
+                        time_end_max
+                     )
 
     def render(self, mode, **kwargs):
         if self.render_mode == 'rgb_array':
@@ -140,11 +156,14 @@ class DeepMimicGymEnv(Env):
             self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=10)
             self._pybullet_client.changeDynamics(self._planeId, linkIndex=-1, lateralFriction=0.9)
 
+            self.set_timer_params()
+
             self._mocapData = motion_capture_data.MotionCaptureData()
-            motion_file = self._config["motion_file"]
+            motion_file = self.arg_parser.parse_strings("motion_file")
             motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
-            self._mocapData.Load(motionPath)
             print("motion_file=", motion_file[0])
+
+            self._mocapData.Load(motionPath)
 
             timeStep = 1. / 240.
             useFixedBase = False
@@ -153,7 +172,7 @@ class DeepMimicGymEnv(Env):
                                 self._mocapData,
                                 timeStep, 
                                 useFixedBase, 
-                                self._config)
+                                self.arg_parser)
             self._isInitialized = True
 
             self._pybullet_client.setTimeStep(timeStep)
@@ -171,7 +190,7 @@ class DeepMimicGymEnv(Env):
         #print("numframes = ", self._humanoid._mocap_data.NumFrames())
         #startTime = random.randint(0,self._humanoid._mocap_data.NumFrames()-2)
         if self.evaluate:
-            startTime = 0
+            startTime = 0.0
         else:
             rnrange = 1000
             rn = random.randint(0, rnrange)
@@ -185,6 +204,7 @@ class DeepMimicGymEnv(Env):
         self._pybullet_client.stepSimulation()
         self._humanoid.resetPose()
         self.needs_update_time = self.t - 1  # force update
+        self.timer.reset()
         return self.observations()
 
     def step(self, action):
@@ -368,6 +388,7 @@ class DeepMimicGymEnv(Env):
 
         for i in range(1):
             self.t += timeStep
+            self.timer.update(timeStep)
             self._humanoid.setSimTime(self.t)
 
             if self.desiredPose:
@@ -401,7 +422,7 @@ class DeepMimicGymEnv(Env):
                 self._pybullet_client.stepSimulation()
 
     def set_sample_count(self, count):
-        return
+        self.timer.set_sample_count(count)
 
     def check_terminate(self, agent_id):
         return Env.Terminate(self.is_episode_end())
@@ -411,7 +432,7 @@ class DeepMimicGymEnv(Env):
         #also check maximum time, 20 seconds (todo get from file)
         #print(isEnded)
         #print("self.t=",self.t)
-        if (self.t > 20):
+        if self.timer.is_end():
             isEnded = True
         return isEnded
 

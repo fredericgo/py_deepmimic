@@ -20,10 +20,10 @@ jointFrictionForce = 0
 class HumanoidStablePD(object):
 
   def __init__( self, pybullet_client, mocap_data, timeStep, 
-                useFixedBase=True, config=None):
+                useFixedBase=True, argparser=None):
     self._pybullet_client = pybullet_client
     self._mocap_data = mocap_data
-    self._config = config
+    self._arg_parser = argparser
     print("LOADING humanoid!")
 
     self._sim_model = self._pybullet_client.loadURDF(
@@ -138,8 +138,8 @@ class HumanoidStablePD(object):
 
     #only those body parts/links are allowed to touch the ground, otherwise the episode terminates
     fall_contact_bodies = []
-    if self._config is not None:
-      fall_contact_bodies = self._config["fall_contact_bodies"]
+    if self._arg_parser is not None:
+      fall_contact_bodies = self._arg_parser.parse_ints("fall_contact_bodies")
     self._fall_contact_body_parts = fall_contact_bodies
 
     #[x,y,z] base position and [x,y,z,w] base orientation!

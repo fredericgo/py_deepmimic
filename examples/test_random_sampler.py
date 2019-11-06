@@ -10,10 +10,14 @@ env = DeepMimicGymEnv(backflip_file, enable_draw=True)
 #env.set_mode(Mode.TEST)
 state = env.reset()
 for i in range(100):
+    c = 1
     while True:
+        c += 1
         a = env.action_space.sample()
         state, rew, done, _ = env.step(a)
         #env.render()
         if done:
+            print(c)
+            env.set_sample_count(i*100000)
             state = env.reset()
             break
