@@ -62,7 +62,8 @@ class DeepMimicGymEnv(Env):
                         time_lim_min,
                         time_lim_max,
                         time_end_min,
-                        time_end_max
+                        time_end_max,
+                        evaluation=self.evaluate
                      )
 
     def render(self, mode, **kwargs):
@@ -195,7 +196,7 @@ class DeepMimicGymEnv(Env):
             rnrange = 1000
             rn = random.randint(0, rnrange)
             startTime = float(rn) / rnrange * self._humanoid.getCycleTime()
-
+        
         self.t = startTime
         self._humanoid.setSimTime(startTime)
 
@@ -205,6 +206,7 @@ class DeepMimicGymEnv(Env):
         self._humanoid.resetPose()
         self.needs_update_time = self.t - 1  # force update
         self.timer.reset()
+
         return self.observations()
 
     def step(self, action):

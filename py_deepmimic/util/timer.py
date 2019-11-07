@@ -29,7 +29,8 @@ class Timer:
             time_lim_min,
             time_lim_max,
             time_end_min,
-            time_end_max):
+            time_end_max,
+            evaluation=False):
         self.annealing_samples = annealing_samples
         self.begin_params = TimerParams(time_lim_min, time_lim_max)
         self.curr_params = None
@@ -37,14 +38,18 @@ class Timer:
         self.reset_params()
         self.max_time = None
         self.t = 0
+        self.evaluation = evaluation
 
     def update(self, timestep):
         self.t += timestep
 
     def reset(self):
         self.t = 0
-        self.max_time = random.uniform(self.curr_params.min, self.curr_params.max)
-
+        if self.evaluation:
+            self.max_time = self.end_params.max
+        else:
+            self.max_time = random.uniform(self.curr_params.min, self.curr_params.max)
+        
     def reset_params(self):
         self.curr_params = copy.deepcopy(self.begin_params)
 
