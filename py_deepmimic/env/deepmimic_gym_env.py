@@ -41,7 +41,9 @@ class DeepMimicGymEnv(Env):
 
         self._num_agents = 1
         self.id = 0
-        self.update_timestep = 1. / 240
+        self.fps = 60
+        self.update_substeps = 10
+        self.update_timestep = 1. / (60. * self.update_substeps)
 
         self._isInitialized = False
         self._useStablePD = True
