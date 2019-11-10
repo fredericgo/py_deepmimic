@@ -275,6 +275,9 @@ class HumanoidStablePD(object):
 
     self._frameFraction = (frameTime - self._frame * keyFrameDuration) / (keyFrameDuration)
 
+  def getSimTime(self):
+    return self._simTime
+    
   def computeCycleOffset(self):
     firstFrame = 0
     lastFrame = self._mocap_data.NumFrames() - 1

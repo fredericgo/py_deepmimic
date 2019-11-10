@@ -205,12 +205,28 @@ class DeepMimicGymEnv(Env):
         #this clears the contact points. Todo: add API to explicitly clear all contact points?
         self._pybullet_client.stepSimulation()
         self._humanoid.resetPose()
-        self.needs_update_time = self.t - 1  # force update
+        #self.needs_update_time = self.t - 1  # force update
         self.timer.reset()
 
         return self.observations()
 
     def step(self, action):
+        self.set_action(self.id, action)
+        self.update(self.update_timestep)
+
+        # current sim time
+        self.needs_update_time = self.t + 1. / self.fps
+        while self.t <= self.needs_update_time:
+            self.update(self.update_timestep)
+
+        reward = self.calc_reward(self.id)
+        observation = self.observations()
+        done = self.is_episode_end()
+        info = dict()
+        print(reward)
+        return observation, reward, done, info
+
+    def step1(self, action):
         self.set_action(self.id, action)
         self.update(self.update_timestep)
         
@@ -341,7 +357,7 @@ class DeepMimicGymEnv(Env):
 
     def need_new_action(self, agent_id):
         if self.t >= self.needs_update_time:
-            self.needs_update_time = self.t + 1. / 30.
+            self.needs_update_time = self.t + 1. / self.fps
             return True
         return False
 
@@ -389,40 +405,39 @@ class DeepMimicGymEnv(Env):
         self._pybullet_client.setTimeStep(timeStep)
         self._humanoid._timeStep = timeStep
 
-        for i in range(1):
-            self.t += timeStep
-            self.timer.update(timeStep)
-            self._humanoid.setSimTime(self.t)
+        self.t += timeStep
+        self.timer.update(timeStep)
+        self._humanoid.setSimTime(self.t)
 
-            if self.desiredPose:
-                kinPose = self._humanoid.computePose(self._humanoid._frameFraction)
-                self._humanoid.initializePose(self._humanoid._poseInterpolator,
-                                                self._humanoid._kin_model,
-                                                initBase=True)
-                #pos,orn=self._pybullet_client.getBasePositionAndOrientation(self._humanoid._sim_model)
-                #self._pybullet_client.resetBasePositionAndOrientation(self._humanoid._kin_model, [pos[0]+3,pos[1],pos[2]],orn)
-                #print("desiredPositions=",self.desiredPose)
-                maxForces = [
-                    0, 0, 0, 0, 0, 0, 0, 200, 200, 200, 200, 50, 50, 50, 50, 200, 200, 200, 200, 150, 90,
-                    90, 90, 90, 100, 100, 100, 100, 60, 200, 200, 200, 200, 150, 90, 90, 90, 90, 100, 100,
-                    100, 100, 60
-                ]
+        if self.desiredPose:
+            kinPose = self._humanoid.computePose(self._humanoid._frameFraction)
+            self._humanoid.initializePose(self._humanoid._poseInterpolator,
+                                            self._humanoid._kin_model,
+                                            initBase=True)
+            #pos,orn=self._pybullet_client.getBasePositionAndOrientation(self._humanoid._sim_model)
+            #self._pybullet_client.resetBasePositionAndOrientation(self._humanoid._kin_model, [pos[0]+3,pos[1],pos[2]],orn)
+            #print("desiredPositions=",self.desiredPose)
+            maxForces = [
+                0, 0, 0, 0, 0, 0, 0, 200, 200, 200, 200, 50, 50, 50, 50, 200, 200, 200, 200, 150, 90,
+                90, 90, 90, 100, 100, 100, 100, 60, 200, 200, 200, 200, 150, 90, 90, 90, 90, 100, 100,
+                100, 100, 60
+            ]
 
-                if self._useStablePD:
-                    usePythonStablePD = False
-                    if usePythonStablePD:
-                        taus = self._humanoid.computePDForces(self.desiredPose,
-                                                            desiredVelocities=None,
-                                                            maxForces=maxForces)
-                        #taus = [0]*43
-                        self._humanoid.applyPDForces(taus)
-                    else:
-                        self._humanoid.computeAndApplyPDForces(self.desiredPose,
+            if self._useStablePD:
+                usePythonStablePD = False
+                if usePythonStablePD:
+                    taus = self._humanoid.computePDForces(self.desiredPose,
+                                                        desiredVelocities=None,
                                                         maxForces=maxForces)
+                    #taus = [0]*43
+                    self._humanoid.applyPDForces(taus)
                 else:
-                    self._humanoid.setJointMotors(self.desiredPose, maxForces=maxForces)
+                    self._humanoid.computeAndApplyPDForces(self.desiredPose,
+                                                    maxForces=maxForces)
+            else:
+                self._humanoid.setJointMotors(self.desiredPose, maxForces=maxForces)
 
-                self._pybullet_client.stepSimulation()
+            self._pybullet_client.stepSimulation()
 
     def set_sample_count(self, count):
         self.timer.set_sample_count(count)
@@ -488,36 +503,3 @@ class HumanoidCartwheelEnv(DeepMimicGymEnv):
                  enable_draw=False, 
                  **kwargs):
         super(HumanoidCartwheelEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
-
-
-class HumanoidRadiusEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_walk_args.txt"
-    )
-
-    def __init__(self,
-                 enable_draw=False,
-                 **kwargs):
-        super(HumanoidRadiusEnv, self).__init__(
-            self._file, enable_draw=enable_draw, **kwargs)
-
-    def reset(self):
-
-        self.t = startTime
-        self._humanoid.setSimTime(startTime)
-        self._humanoid.resetPoseWithoutVelocity()
-        #this clears the contact points. Todo: add API to explicitly clear all contact points?
-        #self._pybullet_client.stepSimulation()
-        self._humanoid.resetPoseWithoutVelocity()
-        self.needs_update_time = self.t - 1  # force update
-        return self.observations()
-
-    def calc_reward(self, _id):
-        radius = 5
-        x = self._humanoid.getPosition()
-        r = np.sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2])
-        reward = r / radius
-        if r > 5:
-            reward = 0
-        return reward
