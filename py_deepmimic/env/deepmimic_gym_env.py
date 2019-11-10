@@ -168,17 +168,16 @@ class DeepMimicGymEnv(Env):
 
             self._mocapData.Load(motionPath)
 
-            timeStep = 1. / 240.
             useFixedBase = False
             self._humanoid = humanoid_stable_pd.HumanoidStablePD(
                                 self._pybullet_client, 
                                 self._mocapData,
-                                timeStep, 
+                                self.update_timestep, 
                                 useFixedBase, 
                                 self.arg_parser)
             self._isInitialized = True
 
-            self._pybullet_client.setTimeStep(timeStep)
+            self._pybullet_client.setTimeStep(self.update_timestep)
             self._pybullet_client.setPhysicsEngineParameter(numSubSteps=1)
             
             self.reset()
