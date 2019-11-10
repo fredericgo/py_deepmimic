@@ -215,24 +215,8 @@ class DeepMimicGymEnv(Env):
         self.update(self.update_timestep)
 
         # current sim time
-        self.needs_update_time = self.t + 1. / self.fps
+        self.needs_update_time = self.t + 1. / 30.
         while self.t <= self.needs_update_time:
-            self.update(self.update_timestep)
-
-        reward = self.calc_reward(self.id)
-        observation = self.observations()
-        done = self.is_episode_end()
-        info = dict()
-        print(reward)
-        return observation, reward, done, info
-
-    def step1(self, action):
-        self.set_action(self.id, action)
-        self.update(self.update_timestep)
-        
-        while not self.need_new_action(self.id):
-            if self.is_episode_end():
-                break
             self.update(self.update_timestep)
 
         reward = self.calc_reward(self.id)
