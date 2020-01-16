@@ -477,6 +477,32 @@ class HumanoidWalkEnv(DeepMimicGymEnv):
                  **kwargs):
         super(HumanoidWalkEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
 
+
+class HumanoidJumpEnv(DeepMimicGymEnv):
+    _file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_jump_args.txt"
+    )
+
+    def __init__(self,
+                 enable_draw=False,
+                 **kwargs):
+        super(HumanoidJumpEnv, self).__init__(
+            self._file, enable_draw=enable_draw, **kwargs)
+
+
+class HumanoidDance_aEnv(DeepMimicGymEnv):
+    _file = pkg_resources.resource_filename(
+        "py_deepmimic",
+        "data/args/train_humanoid3d_dance_a_args.txt"
+    )
+
+    def __init__(self,
+                 enable_draw=False,
+                 **kwargs):
+        super(HumanoidDance_aEnv, self).__init__(
+            self._file, enable_draw=enable_draw, **kwargs)
+
 class HumanoidCartwheelEnv(DeepMimicGymEnv):
     _file = pkg_resources.resource_filename(
         "py_deepmimic",

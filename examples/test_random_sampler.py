@@ -15,6 +15,7 @@ for i in range(100):
         c += 1
         a = env.action_space.sample()
         state, rew, done, _ = env.step(a)
+        print(rew)
         #env.render()
         if done:
             print(c)
