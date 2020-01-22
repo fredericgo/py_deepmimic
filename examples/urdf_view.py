@@ -13,7 +13,7 @@ z2y = p.getQuaternionFromEuler([-math.pi * 0.5, 0, 0])
 
 _planeId = _client.loadURDF(
     "ground.urdf",
-    [15, 0, 0]
+    [15, 0, 0], 
 )
 
 while True:

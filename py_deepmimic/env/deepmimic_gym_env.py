@@ -205,10 +205,13 @@ class DeepMimicGymEnv(Env):
         #this clears the contact points. Todo: add API to explicitly clear all contact points?
         self._pybullet_client.stepSimulation()
         self._humanoid.resetPose()
+        self._humanoid.resolve_sim_char_ground_intersect()
+    
         #self.needs_update_time = self.t - 1  # force update
         self.timer.reset()
 
         return self.observations()
+
 
     def step(self, action):
         self.set_action(self.id, action)
