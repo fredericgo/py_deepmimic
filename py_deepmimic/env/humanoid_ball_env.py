@@ -30,9 +30,9 @@ class DeepMimicGymEnv(Env):
     reward_range = (-float('inf'), float('inf'))
     spec = None
 
-    def __init__(self, 
-                 arg_file, 
-                 enable_draw=False, 
+    def __init__(self,
+                 arg_file,
+                 enable_draw=False,
                  **kwargs):
         super().__init__(arg_file, enable_draw)
 
@@ -41,9 +41,9 @@ class DeepMimicGymEnv(Env):
 
         self._num_agents = 1
         self.id = 0
-        self.fps = 60
-        self.update_substeps = 10
-        self.update_timestep = 1. / (self.fps * self.update_substeps)
+        self.fps = 30
+        #self.update_substeps = 10
+        self.update_timestep = 1. / 240.
 
         self._isInitialized = False
         self._useStablePD = True
@@ -54,19 +54,20 @@ class DeepMimicGymEnv(Env):
         self.initialize()
 
     def set_timer_params(self):
-        anneal_samples = self.arg_parser.parse_float("anneal_samples", 32000000)
+        anneal_samples = self.arg_parser.parse_float(
+            "anneal_samples", 32000000)
         time_lim_min = self.arg_parser.parse_float("time_lim_min", np.inf)
         time_lim_max = self.arg_parser.parse_float("time_lim_max", np.inf)
         time_end_min = self.arg_parser.parse_float("time_end_lim_min", np.inf)
         time_end_max = self.arg_parser.parse_float("time_end_lim_max", np.inf)
         self.timer = timer.Timer(
-                        anneal_samples,
-                        time_lim_min,
-                        time_lim_max,
-                        time_end_min,
-                        time_end_max,
-                        evaluation=self.evaluate
-                     )
+            anneal_samples,
+            time_lim_min,
+            time_lim_max,
+            time_end_min,
+            time_end_max,
+            evaluation=self.evaluate
+        )
 
     def render(self, mode, **kwargs):
         if self.render_mode == 'rgb_array':
@@ -115,12 +116,12 @@ class DeepMimicGymEnv(Env):
 
         self.fov = 60
         self.viewMatrix = p1.computeViewMatrixFromYawPitchRoll(
-                        self.camTargetPos,
-                        self.camDistance,
-                        self.yaw,
-                        self.pitch,
-                        self.roll,
-                        self.upAxisIndex)
+            self.camTargetPos,
+            self.camDistance,
+            self.yaw,
+            self.pitch,
+            self.roll,
+            self.upAxisIndex)
         self.aspect = self.width / self.height
         self.projectionMatrix = p1.computeProjectionMatrixFOV(
             self.fov,
@@ -132,32 +133,38 @@ class DeepMimicGymEnv(Env):
         if not self._isInitialized:
             if self.enable_draw:
                 if self.render_mode == 'human' or self.render_mode == 'rgb_array':
-                    self._pybullet_client = bullet_client.BulletClient(connection_mode=p1.GUI)
+                    self._pybullet_client = bullet_client.BulletClient(
+                        connection_mode=p1.GUI)
                     self._build_camera()
-                    
+
                 #disable 'GUI' since it slows down a lot on Mac OSX and some other platforms
-                self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_GUI, 0)
+                self._pybullet_client.configureDebugVisualizer(
+                    self._pybullet_client.COV_ENABLE_GUI, 0)
             else:
                 self._pybullet_client = bullet_client.BulletClient()
 
-
-            self._pybullet_client.setAdditionalSearchPath(pybullet_data.getDataPath())
-            z2y = self._pybullet_client.getQuaternionFromEuler([-math.pi * 0.5, 0, 0])
+            self._pybullet_client.setAdditionalSearchPath(
+                pybullet_data.getDataPath())
+            z2y = self._pybullet_client.getQuaternionFromEuler(
+                [-math.pi * 0.5, 0, 0])
             self._planeId = self._pybullet_client.loadURDF("plane_implicit.urdf", [0, 0, 0],
-                                                            z2y,
-                                                            useMaximalCoordinates=True)
+                                                           z2y,
+                                                           useMaximalCoordinates=True)
             #print("planeId=",self._planeId)
-            self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_Y_AXIS_UP, 1)
+            self._pybullet_client.configureDebugVisualizer(
+                self._pybullet_client.COV_ENABLE_Y_AXIS_UP, 1)
             self._pybullet_client.resetDebugVisualizerCamera(
-                                            cameraDistance=3, 
-                                            cameraYaw=180, 
-                                            cameraPitch=-35, 
-                                            cameraTargetPosition=[0, 0, 0]
-                                        )
+                cameraDistance=3,
+                cameraYaw=180,
+                cameraPitch=-35,
+                cameraTargetPosition=[0, 0, 0]
+            )
             self._pybullet_client.setGravity(0, -9.8, 0)
 
-            self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=10)
-            self._pybullet_client.changeDynamics(self._planeId, linkIndex=-1, lateralFriction=0.9)
+            self._pybullet_client.setPhysicsEngineParameter(
+                numSolverIterations=10)
+            self._pybullet_client.changeDynamics(
+                self._planeId, linkIndex=-1, lateralFriction=0.9)
 
             self.set_timer_params()
 
@@ -170,23 +177,22 @@ class DeepMimicGymEnv(Env):
 
             useFixedBase = False
             self._humanoid = humanoid_stable_pd.HumanoidStablePD(
-                                self._pybullet_client, 
-                                self._mocapData,
-                                self.update_timestep, 
-                                useFixedBase, 
-                                self.arg_parser)
+                self._pybullet_client,
+                self._mocapData,
+                self.update_timestep,
+                useFixedBase,
+                self.arg_parser)
             self._isInitialized = True
 
             self._pybullet_client.setTimeStep(self.update_timestep)
             self._pybullet_client.setPhysicsEngineParameter(numSubSteps=1)
-            
+
             self.reset()
             self._set_action_space()
             action = self.action_space.sample()
             observation, _reward, done, _info = self.step(action)
             assert not done
             self._set_observation_space(observation)
-
 
     def reset(self):
         #print("numframes = ", self._humanoid._mocap_data.NumFrames())
@@ -197,7 +203,7 @@ class DeepMimicGymEnv(Env):
             rnrange = 1000
             rn = random.randint(0, rnrange)
             startTime = float(rn) / rnrange * self._humanoid.getCycleTime()
-        
+
         self.t = startTime
         self._humanoid.setSimTime(startTime)
 
@@ -205,20 +211,20 @@ class DeepMimicGymEnv(Env):
         #this clears the contact points. Todo: add API to explicitly clear all contact points?
         self._pybullet_client.stepSimulation()
         self._humanoid.resetPose()
-        #self._humanoid.resolve_sim_char_ground_intersect()
-    
+        self._humanoid.resolve_sim_char_ground_intersect()
+
         #self.needs_update_time = self.t - 1  # force update
         self.timer.reset()
 
         return self.observations()
 
-
     def step(self, action):
         self.set_action(self.id, action)
-        #self.update(self.update_timestep)
+        self.update(self.update_timestep)
+
         # current sim time
-        self.needs_update_time = self.t + 1. / self.fps
-        while self.t < self.needs_update_time:
+        self.needs_update_time = self.t + 1. / 30.
+        while self.t <= self.needs_update_time:
             self.update(self.update_timestep)
 
         reward = self.calc_reward(self.id)
@@ -270,7 +276,7 @@ class DeepMimicGymEnv(Env):
         return 0
 
     def get_action_size(self, agent_id):
-        ctrl_size = 43  #numDof
+        ctrl_size = 43  # numDof
         root_size = 7
         return ctrl_size - root_size
 
@@ -286,11 +292,15 @@ class DeepMimicGymEnv(Env):
     def build_action_offset(self, agent_id):
         out_offset = [0] * self.get_action_size(agent_id)
         out_offset = [
-            0.0000000000, 0.0000000000, 0.0000000000, -0.200000000, 0.0000000000, 0.0000000000,
-            0.0000000000, -0.200000000, 0.0000000000, 0.0000000000, 0.00000000, -0.2000000, 1.57000000,
-            0.00000000, 0.00000000, 0.00000000, -0.2000000, 0.00000000, 0.00000000, 0.00000000,
+            0.0000000000, 0.0000000000, 0.0000000000, -
+            0.200000000, 0.0000000000, 0.0000000000,
+            0.0000000000, -0.200000000, 0.0000000000, 0.0000000000, 0.00000000, -
+            0.2000000, 1.57000000,
+            0.00000000, 0.00000000, 0.00000000, -
+            0.2000000, 0.00000000, 0.00000000, 0.00000000,
             -0.2000000, -1.5700000, 0.00000000, 0.00000000, 0.00000000, -0.2000000, 1.57000000,
-            0.00000000, 0.00000000, 0.00000000, -0.2000000, 0.00000000, 0.00000000, 0.00000000,
+            0.00000000, 0.00000000, 0.00000000, -
+            0.2000000, 0.00000000, 0.00000000, 0.00000000,
             -0.2000000, -1.5700000
         ]
         #see cCtCtrlUtil::BuildOffsetScalePDPrismatic and
@@ -319,10 +329,14 @@ class DeepMimicGymEnv(Env):
         out_scale = [
             -4.79999999999, -1.00000000000, -1.00000000000, -1.00000000000, -4.00000000000,
             -1.00000000000, -1.00000000000, -1.00000000000, -7.77999999999, -1.00000000000,
-            -1.000000000, -1.000000000, -7.850000000, -6.280000000, -1.000000000, -1.000000000,
-            -1.000000000, -12.56000000, -1.000000000, -1.000000000, -1.000000000, -4.710000000,
-            -7.779999999, -1.000000000, -1.000000000, -1.000000000, -7.850000000, -6.280000000,
-            -1.000000000, -1.000000000, -1.000000000, -8.460000000, -1.000000000, -1.000000000,
+            -1.000000000, -1.000000000, -7.850000000, -
+            6.280000000, -1.000000000, -1.000000000,
+            -1.000000000, -12.56000000, -1.000000000, -
+            1.000000000, -1.000000000, -4.710000000,
+            -7.779999999, -1.000000000, -1.000000000, -
+            1.000000000, -7.850000000, -6.280000000,
+            -1.000000000, -1.000000000, -1.000000000, -
+            8.460000000, -1.000000000, -1.000000000,
             -1.000000000, -4.710000000
         ]
         return np.array(out_scale)
@@ -350,7 +364,7 @@ class DeepMimicGymEnv(Env):
     def record_state(self, agent_id):
         state = self._humanoid.getState()
         return np.array(state)
-    
+
     def observations(self):
         state = self._humanoid.getState()
         return np.array(state)
@@ -369,7 +383,6 @@ class DeepMimicGymEnv(Env):
         #  print(a)
         #np.savetxt("pb_action.csv", action, delimiter=",")
         self.desiredPose = self._humanoid.convertActionToPose(action)
-        #print(self.desiredPose)
         #we need the target root positon and orientation to be zero, to be compatible with deep mimic
         self.desiredPose[0] = 0
         self.desiredPose[1] = 0
@@ -399,8 +412,8 @@ class DeepMimicGymEnv(Env):
         if self.desiredPose:
             kinPose = self._humanoid.computePose(self._humanoid._frameFraction)
             self._humanoid.initializePose(self._humanoid._poseInterpolator,
-                                            self._humanoid._kin_model,
-                                            initBase=True)
+                                          self._humanoid._kin_model,
+                                          initBase=True)
             #pos,orn=self._pybullet_client.getBasePositionAndOrientation(self._humanoid._sim_model)
             #self._pybullet_client.resetBasePositionAndOrientation(self._humanoid._kin_model, [pos[0]+3,pos[1],pos[2]],orn)
             #print("desiredPositions=",self.desiredPose)
@@ -414,15 +427,16 @@ class DeepMimicGymEnv(Env):
                 usePythonStablePD = False
                 if usePythonStablePD:
                     taus = self._humanoid.computePDForces(self.desiredPose,
-                                                        desiredVelocities=None,
-                                                        maxForces=maxForces)
+                                                          desiredVelocities=None,
+                                                          maxForces=maxForces)
                     #taus = [0]*43
                     self._humanoid.applyPDForces(taus)
                 else:
                     self._humanoid.computeAndApplyPDForces(self.desiredPose,
-                                                    maxForces=maxForces)
+                                                           maxForces=maxForces)
             else:
-                self._humanoid.setJointMotors(self.desiredPose, maxForces=maxForces)
+                self._humanoid.setJointMotors(
+                    self.desiredPose, maxForces=maxForces)
 
             self._pybullet_client.stepSimulation()
 
@@ -468,78 +482,3 @@ class HumanoidBackflipEnv(DeepMimicGymEnv):
         super(HumanoidBackflipEnv, self).__init__(
             self._file, enable_draw=enable_draw, **kwargs)
 
-
-class HumanoidWalkEnv(DeepMimicGymEnv):    
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_walk_args.txt"
-    )
-    
-    def __init__(self, 
-                 enable_draw=False, 
-                 **kwargs):
-        super(HumanoidWalkEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
-
-
-class HumanoidJumpEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_jump_args.txt"
-    )
-
-    def __init__(self,
-                 enable_draw=False,
-                 **kwargs):
-        super(HumanoidJumpEnv, self).__init__(
-            self._file, enable_draw=enable_draw, **kwargs)
-
-
-class HumanoidRunEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_run_args.txt"
-    )
-
-    def __init__(self,
-                 enable_draw=False,
-                 **kwargs):
-        super(HumanoidRunEnv, self).__init__(
-            self._file, enable_draw=enable_draw, **kwargs)
-
-
-
-class HumanoidDance_aEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_dance_a_args.txt"
-    )
-
-    def __init__(self,
-                 enable_draw=False,
-                 **kwargs):
-        super(HumanoidDance_aEnv, self).__init__(
-            self._file, enable_draw=enable_draw, **kwargs)
-
-class HumanoidCartwheelEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_cartwheel_args.txt"
-    )
-
-    def __init__(self, 
-                 enable_draw=False, 
-                 **kwargs):
-        super(HumanoidCartwheelEnv, self).__init__(self._file, enable_draw=enable_draw, **kwargs)
-
-
-class HumanoidSpinEnv(DeepMimicGymEnv):
-    _file = pkg_resources.resource_filename(
-        "py_deepmimic",
-        "data/args/train_humanoid3d_spin_args.txt"
-    )
-
-    def __init__(self,
-                 enable_draw=False,
-                 **kwargs):
-        super(HumanoidSpinEnv, self).__init__(
-            self._file, enable_draw=enable_draw, **kwargs)

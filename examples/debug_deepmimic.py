@@ -12,44 +12,31 @@ _client.setAdditionalSearchPath("./data")
 
 z2y = p.getQuaternionFromEuler([-math.pi * 0.5, 0, 0])
 
-robotId = _client.loadURDF(
+_planeId = p.loadURDF("plane_implicit.urdf", [0, 0, 0],
+                                               z2y,
+                                               useMaximalCoordinates=True)
+robotId = p.loadURDF(
     "humanoid.urdf",
-    [0, 0, 0], 
+    [0, 0.85, 0], 
     globalScaling=0.25
 )
+
+_ballUniqueId = p.loadURDF("sphere2.urdf", [2, .5, 2])
+
 num_joints = p.getNumJoints(robotId)
 jointIndices = range(num_joints)
 
+p.setGravity(0, -9.8, 0)
 
-def _record_masses(model):
-    num_joints = p.getNumJoints(model)
-    jointIndices = range(num_joints)
-
-    infos = p.getDynamicsInfo(model, jointIndices)
-    masses = [x[0] for x in infos]
-    return masses
-
-def calcCOM(model):
-    num_joints = p.getNumJoints(model)
-    jointIndices = range(num_joints)
-    link_states = p.getLinkStates(model, jointIndices)
-    for i, s in enumerate(link_states):
-    [s[0] for o in link_states]
-
-masses = _record_masses(robotId)
-total_mass = sum(masses)
-
+def getBallCOM(ballId):
+    p.getLinkState(ballId)
 while True:
-    _client.stepSimulation()
-    simJointStates = p.getJointStatesMultiDof(
-                        robotId, jointIndices)
+    p.stepSimulation()
+    s = p.getBasePositionAndOrientation(_ballUniqueId)
+    h = p.getBasePositionAndOrientation(robotId)
 
-    print("joint states", simJointStates)
-    link_states = p.getLinkStates(robotId, jointIndices)
-    print("link states")
-    for i, a in enumerate(link_states):
-        print("com: ", a[0])
-        info = p.getJointInfo(robotId, i)
-        print(info)
-    #break
+    print(s)
+    print(h)
+
+    
 

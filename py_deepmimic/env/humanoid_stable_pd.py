@@ -179,7 +179,7 @@ class HumanoidStablePD(object):
     self._pybullet_client.resetBasePositionAndOrientation(self._sim_model, rootPos,
                                                               rootOrnSim)
     max_ground_height = pad
-    print(aabb_min[1])
+    #print(aabb_min[1])
     #min_height = aabb_min[1]
     #min_violation = min(min_violation, min_height - max_ground_height)
     #print(min_violation)
@@ -304,7 +304,7 @@ class HumanoidStablePD(object):
       jointIndex = self._jointIndicesAll[index]
       indices.append(jointIndex)
       kps.append(self._kpOrg[dofIndex])
-      kds.append(self._kdOrg[dofIndex])
+      kds.append(self._kdOrg[dofIndex])            
       if self._jointDofCounts[index] == 4:
         force = [
             scaling * maxForces[dofIndex + 0],
@@ -322,6 +322,8 @@ class HumanoidStablePD(object):
         force = [scaling * maxForces[dofIndex]]
         targetPosition = [desiredPositions[dofIndex+0]]
         targetVelocity = [0]
+        #if jointIndex == rightKnee:
+        #      print(np.rad2deg(targetPosition))
       forces.append(force)
       targetPositions.append(targetPosition)
       targetVelocities.append(targetVelocity)

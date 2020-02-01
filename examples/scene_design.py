@@ -1,6 +1,6 @@
 from py_deepmimic.env import humanoid_stable_pd
 from py_deepmimic.env import motion_capture_data
-from py_deepmimic.env import argparser
+from py_deepmimic.util import argparser
 
 from pybullet_utils import bullet_client
 import pybullet_data
@@ -73,7 +73,8 @@ class NewEnvironment:
     def __init__(self,
                  arg_file):
         self.timestep = 1 / 240.
-        self._config = argparser.load_file(arg_file)
+        self.argparser = argparser.ArgParser()
+        self.argparser.load_file(arg_file)
         self.initialized = False
 
         self._initialize()
@@ -110,7 +111,8 @@ class NewEnvironment:
         self._client.changeDynamics(self._planeId, linkIndex=-1, lateralFriction=0.9)
 
     def _build_humanoid(self):
-        motion_file = self._config["motion_file"][0]
+        motion_file = self.argparser.parse_string("motion_file")
+
         mocap_data = load_mocap_data(motion_file)
 
         useFixedBase = False
@@ -120,7 +122,7 @@ class NewEnvironment:
                             mocap_data,
                             self.timestep,
                             useFixedBase,
-                            self._config
+                            self.argparser
                         )
 
     def _build_camera(self):
@@ -129,8 +131,7 @@ class NewEnvironment:
     def reset(self):
         start_time = 0
         self._humanoid.setSimTime(start_time)
-        self._humanoid.resetPoseWithoutVelocity()
-        #self._humanoid.resetPose()
+        self._humanoid.resetPose()
 
     def capture_image(self):
         image = self._client.getCameraImage(
